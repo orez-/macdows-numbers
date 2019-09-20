@@ -1,0 +1,15 @@
+{
+  "name": "macdows-numbers",
+  "collaborators": [
+    "Brian Shaginaw <bshaginaw120@gmail.com>"
+  ],
+  "version": "0.1.0",
+  "files": [
+    "macdows_numbers_bg.wasm",
+    "macdows_numbers.js",
+    "macdows_numbers.d.ts"
+  ],
+  "module": "macdows_numbers.js",
+  "types": "macdows_numbers.d.ts",
+  "sideEffects": "false"
+}

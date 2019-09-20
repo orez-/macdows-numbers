@@ -1,0 +1,22 @@
+/* tslint:disable */
+export const memory: WebAssembly.Memory;
+export function __wbg_moveresult_free(a: number): void;
+export function __wbg_get_moveresult_index(a: number): number;
+export function __wbg_set_moveresult_index(a: number, b: number): void;
+export function __wbg_get_moveresult_state(a: number): number;
+export function __wbg_set_moveresult_state(a: number, b: number): void;
+export function __wbg_get_moveresult_win0(a: number): number;
+export function __wbg_set_moveresult_win0(a: number, b: number): void;
+export function __wbg_get_moveresult_win1(a: number): number;
+export function __wbg_set_moveresult_win1(a: number, b: number): void;
+export function __wbg_get_moveresult_win2(a: number): number;
+export function __wbg_set_moveresult_win2(a: number, b: number): void;
+export function __wbg_get_moveresult_win3(a: number): number;
+export function __wbg_set_moveresult_win3(a: number, b: number): void;
+export function __wbg_board_free(a: number): void;
+export function board_new(): number;
+export function board_player_turn(a: number): number;
+export function board_left_num(a: number): number;
+export function board_right_num(a: number): number;
+export function board_set_left(a: number, b: number): number;
+export function board_set_right(a: number, b: number): number;
