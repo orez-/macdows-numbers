@@ -1,23 +1,27 @@
-use std::fmt;
+use wasm_bindgen::prelude::*;
+use js_sys::Math;
 
+extern crate web_sys;
+use web_sys::console;
 
 macro_rules! four_in_a_row {
-    ( $iter:expr, $self:expr ) => {
+    ( $iter:expr, $self:expr, $step:expr) => {
         {
             let mut count = 0;
             let mut seen = Player::None;
             for idx in $iter {
-                print!("{:?} ", idx);
+                console::log_1(&format!("{:?} {:?}", idx, seen).into());
                 if $self.cells[idx] == seen {
                     count += 1;
                     if count == 4 && seen != Player::None {
                         // success
-                        return;
+                        let idx = idx as u8;
+                        return Some([idx, idx - $step, idx - $step * 2, idx - $step * 3]);
                     }
                 }
                 else {
                     seen = $self.cells[idx];
-                    count += 1;
+                    count = 1;
                 }
             }
         }
@@ -25,15 +29,51 @@ macro_rules! four_in_a_row {
 }
 
 
+#[wasm_bindgen]
+#[derive(Debug)]
 #[derive(Clone, Copy)]
-#[derive(PartialEq)]
-enum Player {
+#[derive(PartialEq, Eq)]
+pub enum Player {
     None,
     Blue,
     Red,
 }
 
-struct Board {
+// idiot value objects to communicate results to js.
+// woulda been nice to make this a single enum, but
+// webasm understandably doesn't support this.
+
+#[wasm_bindgen]
+#[derive(Clone, Copy)]
+pub enum MoveState {
+    Success,
+    Invalid,
+    RowWin,
+    GameOver,
+}
+
+#[wasm_bindgen]
+pub struct MoveResult {
+    pub index: u8,
+    pub state: MoveState,
+    // Hey ideally these would be an array of some kind??
+    // But webassembly's being a wuss.
+    pub win0: u8,
+    pub win1: u8,
+    pub win2: u8,
+    pub win3: u8,
+}
+
+impl MoveResult {
+    fn new(index: u8, state: MoveState) -> Self {
+        MoveResult {index: index, state: state, win0: 0, win1: 0, win2: 0, win3: 0}
+    }
+}
+
+// main gamestate
+
+#[wasm_bindgen]
+pub struct Board {
     left_num: u8,
     right_num: u8,
     cells: [Player; 36],
@@ -41,28 +81,12 @@ struct Board {
 }
 
 impl Board {
-    pub fn set_left(&mut self, value: u8) {
-        self.left_num = value;
-        self.apply_set()
-    }
-
-    pub fn set_right(&mut self, value: u8) {
-        self.right_num = value;
-        self.apply_set()
-    }
-
-    pub fn new() -> Self {
-        Board {
-            left_num: 1,  // TODO randomize
-            right_num: 1,  // TODO randomize
-            cells: [Player::None; 36],
-            turn: Player::Blue,
+    fn apply_set(&mut self, left_num: u8, right_num: u8) -> MoveResult {
+        if self.turn == Player::None {
+            return MoveResult::new(0, MoveState::GameOver);
         }
-    }
-
-    fn apply_set(&mut self) {
         // TODO: explore options for this mapping. dunno what's best!
-        let index = match self.left_num * self.right_num {
+        let index = match left_num * right_num {
              1 =>  0,  2 =>  1,  3 =>  2,  4 =>  3,  5 =>  4,  6 =>  5,
              7 =>  6,  8 =>  7,  9 =>  8, 10 =>  9, 12 => 10, 14 => 11,
             15 => 12, 16 => 13, 18 => 14, 20 => 15, 21 => 16, 24 => 17,
@@ -71,28 +95,46 @@ impl Board {
             54 => 30, 56 => 31, 63 => 32, 64 => 33, 72 => 34, 81 => 35,
             _ => unreachable!(),
         };
+        if self.cells[index] != Player::None {
+            return MoveResult::new(index as u8, MoveState::Invalid);
+        }
+        self.left_num = left_num;
+        self.right_num = right_num;
         self.cells[index] = self.turn;
+        match self.identify_consecutive_four(index) {
+            Some(indexes) => {
+                self.turn = Player::None;
+                return MoveResult {
+                    index: index as u8,
+                    state: MoveState::RowWin,
+                    win0: indexes[0],
+                    win1: indexes[1],
+                    win2: indexes[2],
+                    win3: indexes[3],
+                };
+            },
+            None => (),
+        }
         self.turn = match self.turn {
             Player::Blue => Player::Red,
             Player::Red => Player::Blue,
             Player::None => unreachable!(),
         };
+        MoveResult::new(index as u8, MoveState::Success)
     }
 
-    fn identify_consecutive_four(&self, index: u8) {
-        let uindex = index as usize;
-
+    fn identify_consecutive_four(&self, uindex: usize) -> Option<[u8; 4]> {
         // ↓
-        print!("↓ ");
-        four_in_a_row!((uindex % 6..36).step_by(6), self);
+        console::log_1(&"↓".into());
+        four_in_a_row!((uindex % 6..36).step_by(6), self, 6);
 
         // →
-        print!("\n→ ");
+        console::log_1(&"→".into());
         let row_start = uindex / 6 * 6;
-        four_in_a_row!(row_start..row_start + 6, self);
+        four_in_a_row!(row_start..row_start + 6, self, 1);
 
         // ↘
-        print!("\n↘ ");
+        console::log_1(&"↘".into());
         if (uindex + 2) % 7 <= 4 && uindex != 30 && uindex != 5 {
             let (start, end) = if uindex % 6 >= uindex / 6 {  // x >= y
                 (uindex % 7, 36 - uindex % 7 * 6)
@@ -100,14 +142,14 @@ impl Board {
             else {
                 (match uindex % 7 {6 => 6, 5 => 12, _ => unreachable!()}, 36)
             };
-            four_in_a_row!((start..end).step_by(7), self);
+            four_in_a_row!((start..end).step_by(7), self, 7);
         }
         else {
-            print!("~ omitting ~");
+            console::log_1(&"~ omitting ~".into());
         }
 
         // ↙
-        print!("\n↙ ");
+        console::log_1(&"↙".into());
         let mirror = uindex + 5 - 2 * (uindex % 6);  // horizontal flip
         if (mirror + 2) % 7 <= 4 && mirror != 30 && mirror != 5  {
             let (start, end) = if mirror % 6 > mirror / 6 {  // x' > y
@@ -116,50 +158,48 @@ impl Board {
             else {
                 ((uindex % 5 + 1) * 6 - 1, 34)
             };
-            four_in_a_row!((start..=end).step_by(5), self);
+            four_in_a_row!((start..=end).step_by(5), self, 5);
         }
         else {
-            print!("~ omitting ~");
+            console::log_1(&"~ omitting ~".into());
         }
+        None
     }
 }
 
-fn term_color(player: Player, text: String) -> String {
-    format!(
-        "\x1b[{}m{}\x1b[39m",
-        match player {
-            Player::None => 90,
-            Player::Blue => 94,
-            Player::Red => 31,
-        },
-        text,
-    )
+fn random_start() -> u8 {
+    (Math::random() * 9.) as u8 + 1
 }
 
 
-impl fmt::Debug for Board {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        for y in 0..6 {
-            for x in 0..6 {
-                write!(f, "{}", term_color(self.cells[y * 6 + x], "x".to_string()))?;
-            }
-            write!(f, "\n")?;
+#[wasm_bindgen]
+impl Board {
+    pub fn new() -> Self {
+        Board {
+            left_num: random_start(),
+            right_num: random_start(),
+            cells: [Player::None; 36],
+            turn: Player::Red,
         }
-        write!(f, "{} {}", self.left_num, self.right_num)
     }
-}
 
+    pub fn player_turn(&self) -> Player {
+        self.turn
+    }
 
-fn main() {
-    let mut board = Board::new();
-    println!("{:?}", board);
-    board.set_left(5);
-    println!("{:?}", board);
-    board.set_right(7);
-    println!("{:?}", board);
-    for i in 0..36 {
-        println!("\n: {:?}", i);
-        board.identify_consecutive_four(i);
-        println!("");
+    pub fn left_num(&self) -> u8 {
+        self.left_num
+    }
+
+    pub fn right_num(&self) -> u8 {
+        self.right_num
+    }
+
+    pub fn set_left(&mut self, value: u8) -> MoveResult {
+        self.apply_set(value, self.right_num)
+    }
+
+    pub fn set_right(&mut self, value: u8) -> MoveResult {
+        self.apply_set(self.left_num, value)
     }
 }

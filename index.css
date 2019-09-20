@@ -1,0 +1,71 @@
+body {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.red {
+  background-color: pink;
+}
+.blue {
+  background-color: LightBlue;
+}
+
+.reject {
+  animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+.red.win {
+     animation: red-shadow-pulse 1s infinite;
+}
+
+.blue.win {
+     animation: blue-shadow-pulse 1s infinite;
+}
+
+@keyframes red-shadow-pulse
+{
+     0% {
+          box-shadow: 0 0 0 0px rgba(255, 192, 203, 0.4);
+     }
+     100% {
+          box-shadow: 0 0 0 35px rgba(255, 192, 203, 0);
+     }
+}
+
+@keyframes blue-shadow-pulse
+{
+     0% {
+          box-shadow: 0 0 0 0px rgba(173, 216, 230, 0.4);
+     }
+     100% {
+          box-shadow: 0 0 0 35px rgba(173, 216, 230, 0);
+     }
+}
+
+td {
+  text-align: center;
+}
