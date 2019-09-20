@@ -1,5 +1,30 @@
 use std::fmt;
 
+
+macro_rules! four_in_a_row {
+    ( $iter:expr, $self:expr ) => {
+        {
+            let mut count = 0;
+            let mut seen = Player::None;
+            for idx in $iter {
+                print!("{:?} ", idx);
+                if $self.cells[idx] == seen {
+                    count += 1;
+                    if count == 4 && seen != Player::None {
+                        // success
+                        return;
+                    }
+                }
+                else {
+                    seen = $self.cells[idx];
+                    count += 1;
+                }
+            }
+        }
+    };
+}
+
+
 #[derive(Clone, Copy)]
 #[derive(PartialEq)]
 enum Player {
@@ -55,94 +80,47 @@ impl Board {
     }
 
     fn identify_consecutive_four(&self, index: u8) {
-        // ↓
-        println!("\n↓");
-        let mut count = 0;
-        let mut seen = Player::None;
         let uindex = index as usize;
-        for idx in (uindex % 6..36).step_by(6) {
-            println!("{:?}", idx);
-            if self.cells[idx] == seen {
-                count += 1;
-                if count == 4 && seen != Player::None {
-                    // success
-                    return;
-                }
-            }
-            else {
-                seen = self.cells[idx];
-                count += 1;
-            }
-        }
+
+        // ↓
+        print!("↓ ");
+        four_in_a_row!((uindex % 6..36).step_by(6), self);
 
         // →
-        println!("\n→");
-        let mut count = 0;
-        let mut seen = Player::None;
+        print!("\n→ ");
         let row_start = uindex / 6 * 6;
-        for idx in row_start..row_start + 6 {
-            println!("{:?}", idx);
-            if self.cells[idx] == seen {
-                count += 1;
-                if count == 4 && seen != Player::None {
-                    // success
-                    return;
-                }
-            }
-            else {
-                seen = self.cells[idx];
-                count += 1;
-            }
-        }
+        four_in_a_row!(row_start..row_start + 6, self);
 
         // ↘
-        println!("\n↘");
-        let mut count = 0;
-        let mut seen = Player::None;
-        let (start, end) = if uindex % 6 > uindex / 6 {  // x > y
-            (uindex % 7, 36 - uindex % 7 * 6)
-        }
-        else {
-            (uindex % 7 * 6, 36)
-        };
-        for idx in (start..end).step_by(7) {
-            println!("{:?}", idx);
-            if self.cells[idx] == seen {
-                count += 1;
-                if count == 4 && seen != Player::None {
-                    // success
-                    return;
-                }
+        print!("\n↘ ");
+        if (uindex + 2) % 7 <= 4 && uindex != 30 && uindex != 5 {
+            let (start, end) = if uindex % 6 >= uindex / 6 {  // x >= y
+                (uindex % 7, 36 - uindex % 7 * 6)
             }
             else {
-                seen = self.cells[idx];
-                count += 1;
-            }
+                (match uindex % 7 {6 => 6, 5 => 12, _ => unreachable!()}, 36)
+            };
+            four_in_a_row!((start..end).step_by(7), self);
+        }
+        else {
+            print!("~ omitting ~");
         }
 
         // ↙
-        println!("\n↙");
-        // let mut count = 0;
-        // let mut seen = Player::None;
-        // let (start, end) = if uindex % 6 ? uindex / 6 {  // x > y
-        //     (uindex % 5, uindex % 5 * 6 + 1)
-        // }
-        // else {
-        //     ((uindex % 5 + 1) * 6 - 1, 36)
-        // };
-        // for idx in (start..end).step_by(5) {
-        //     if self.cells[idx] == seen {
-        //         count += 1;
-        //         if count == 4 && seen != Player::None {
-        //             // success
-        //             return;
-        //         }
-        //     }
-        //     else {
-        //         seen = self.cells[idx];
-        //         count += 1;
-        //     }
-        // }
+        print!("\n↙ ");
+        let mirror = uindex + 5 - 2 * (uindex % 6);  // horizontal flip
+        if (mirror + 2) % 7 <= 4 && mirror != 30 && mirror != 5  {
+            let (start, end) = if mirror % 6 > mirror / 6 {  // x' > y
+                (uindex % 5, uindex % 5 * 6)
+            }
+            else {
+                ((uindex % 5 + 1) * 6 - 1, 34)
+            };
+            four_in_a_row!((start..=end).step_by(5), self);
+        }
+        else {
+            print!("~ omitting ~");
+        }
     }
 }
 
@@ -180,6 +158,8 @@ fn main() {
     board.set_right(7);
     println!("{:?}", board);
     for i in 0..36 {
+        println!("\n: {:?}", i);
         board.identify_consecutive_four(i);
+        println!("");
     }
 }
